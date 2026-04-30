@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './BrowsePage.css';
 
-function BrowsePage({ onLogout }) {
+function BrowsePage({ onLogout, currentUser }) {
   const [events, setEvents] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,12 +65,23 @@ function BrowsePage({ onLogout }) {
     fetchPublicEvents();
   }, []);
 
-  const categories = ['all', 'Music', 'Arts & Culture', 'Food & Drink', 'Sports', 'Community', 'Business'];
+  const categories = useMemo(() => {
+    const unique = Array.from(
+      new Set(
+        events
+          .map((event) => event.category)
+          .filter(Boolean)
+      )
+    ).sort();
+
+    return ['all', ...unique];
+  }, [events]);
 
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
       const matchesCategory =
-        selectedCategory === 'all' || event.category.toLowerCase() === selectedCategory.toLowerCase();
+        selectedCategory === 'all' ||
+        event.category.toLowerCase() === selectedCategory.toLowerCase();
 
       const search = searchTerm.trim().toLowerCase();
       const matchesSearch =
@@ -89,14 +100,19 @@ function BrowsePage({ onLogout }) {
     <div className="browse-page">
       <nav className="top-nav">
         <div className="nav-content">
-          <h1 className="nav-logo">CityEvents</h1>
+          <h1 className="nav-logo">KalenderNetz</h1>
+
           <div className="nav-links">
             <Link to="/calendar" className="nav-link">Calendar</Link>
             <Link to="/browse" className="nav-link active">Browse</Link>
             <Link to="/venues" className="nav-link">Venues</Link>
             <Link to="/organizations" className="nav-link">Organizations</Link>
-            <Link to="/admin" className="nav-link">Admin</Link>
+            <Link to="/submit-event" className="nav-link">Submit Event</Link>
+            {currentUser?.is_admin && (
+              <Link to="/admin" className="nav-link">Admin</Link>
+            )}
           </div>
+
           <button className="nav-logout" onClick={onLogout}>Logout</button>
         </div>
       </nav>
@@ -148,8 +164,12 @@ function BrowsePage({ onLogout }) {
                     <div className="event-description-large">{event.description}</div>
 
                     <div style={{ marginBottom: '10px', fontSize: '14px' }}>
-                      {event.organization && <div><strong>Organization:</strong> {event.organization}</div>}
-                      {event.venue && <div><strong>Venue:</strong> {event.venue}</div>}
+                      {event.organization && (
+                        <div><strong>Organization:</strong> {event.organization}</div>
+                      )}
+                      {event.venue && (
+                        <div><strong>Venue:</strong> {event.venue}</div>
+                      )}
                     </div>
 
                     <div className="event-details-large">

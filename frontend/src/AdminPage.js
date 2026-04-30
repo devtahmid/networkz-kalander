@@ -2,14 +2,18 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "./AdminPage.css";
 
-function AdminPage({ onLogout }) {
+function AdminPage({ onLogout, currentUser }) {
   const API_BASE = "http://127.0.0.1:8000";
 
   const [events, setEvents] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [message, setMessage] = useState("");
-  const [token, setToken] = useState(localStorage.getItem("token") || "");
+  const [token] = useState(localStorage.getItem("token") || "");
   const [loading, setLoading] = useState(false);
+
+  const [categories, setCategories] = useState([]);
+  const [venues, setVenues] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
 
   const [form, setForm] = useState({
     title: "",
@@ -28,6 +32,28 @@ function AdminPage({ onLogout }) {
     Authorization: `Bearer ${token}`
   });
 
+  const fetchMeta = async () => {
+    try {
+      const [catRes, venueRes, orgRes] = await Promise.all([
+        fetch(`${API_BASE}/meta/categories`),
+        fetch(`${API_BASE}/meta/venues`),
+        fetch(`${API_BASE}/meta/organizations`)
+      ]);
+
+      const [catData, venueData, orgData] = await Promise.all([
+        catRes.json(),
+        venueRes.json(),
+        orgRes.json()
+      ]);
+
+      setCategories(Array.isArray(catData) ? catData : []);
+      setVenues(Array.isArray(venueData) ? venueData : []);
+      setOrganizations(Array.isArray(orgData) ? orgData : []);
+    } catch (err) {
+      console.error("Failed to load metadata", err);
+    }
+  };
+
   const fetchEvents = async () => {
     try {
       setLoading(true);
@@ -42,11 +68,16 @@ function AdminPage({ onLogout }) {
       }
 
       const data = await res.json();
-      setEvents(Array.isArray(data) ? data : []);
+      const safeData = Array.isArray(data) ? data : [];
+      setEvents(safeData);
 
-      if ((Array.isArray(data) ? data : []).length > 0 && !selectedEventId) {
-        const first = data[0];
-        setSelectedEventId(first.id);
+      if (safeData.length > 0) {
+        const stillExists = safeData.some((e) => e.id === selectedEventId);
+        if (!selectedEventId || !stillExists) {
+          setSelectedEventId(safeData[0].id);
+        }
+      } else {
+        setSelectedEventId(null);
       }
     } catch (err) {
       console.error(err);
@@ -57,7 +88,10 @@ function AdminPage({ onLogout }) {
   };
 
   useEffect(() => {
-    if (token) fetchEvents();
+    if (token) {
+      fetchMeta();
+      fetchEvents();
+    }
   }, [token]);
 
   const selectedEvent = useMemo(
@@ -129,7 +163,7 @@ function AdminPage({ onLogout }) {
       }
 
       setMessage("Event updated successfully.");
-      fetchEvents();
+      await fetchEvents();
     } catch (err) {
       console.error(err);
       setMessage("Could not update event.");
@@ -151,7 +185,6 @@ function AdminPage({ onLogout }) {
       }
 
       setMessage("Event deleted.");
-
       const remaining = events.filter((e) => e.id !== selectedEventId);
       setEvents(remaining);
       setSelectedEventId(remaining[0]?.id || null);
@@ -180,7 +213,7 @@ function AdminPage({ onLogout }) {
       }
 
       setMessage(isPublished ? "Event published." : "Event unpublished.");
-      fetchEvents();
+      await fetchEvents();
     } catch (err) {
       console.error(err);
       setMessage("Could not update publish status.");
@@ -200,7 +233,7 @@ function AdminPage({ onLogout }) {
           <Link to="/browse" className="admin-nav-btn">Browse</Link>
           <Link to="/venues" className="admin-nav-btn">Venues</Link>
           <Link to="/organizations" className="admin-nav-btn">Organizations</Link>
-          <button className="admin-nav-btn">Submit Event</button>
+          <Link to="/submit-event" className="admin-nav-btn">Submit Event</Link>
           <Link to="/admin" className="admin-nav-btn admin-nav-btn-active">Admin</Link>
         </div>
       </nav>
@@ -208,19 +241,12 @@ function AdminPage({ onLogout }) {
       <div className="admin-shell">
         <div className="admin-hero">
           <h1>Admin Dashboard</h1>
-          <p>Welcome admin. Pending submissions: {pendingCount}</p>
+          <p>
+            Welcome {currentUser?.username || "admin"}. Pending submissions: {pendingCount}
+          </p>
         </div>
 
         <div className="admin-token-row">
-          <input
-            className="admin-token-input"
-            value={token}
-            onChange={(e) => {
-              setToken(e.target.value);
-              localStorage.setItem("token", e.target.value);
-            }}
-            placeholder="Paste bearer token here"
-          />
           <button className="admin-refresh-btn" onClick={fetchEvents}>
             Refresh
           </button>
@@ -281,13 +307,23 @@ function AdminPage({ onLogout }) {
 
               <div className="admin-editor-actions">
                 <button
+                  type="button"
                   className="admin-pill-btn admin-pill-green"
+                  onClick={() => handlePublish(true)}
+                  disabled={!selectedEventId}
+                >
+                  Publish
+                </button>
+                <button
+                  type="button"
+                  className="admin-pill-btn"
                   onClick={() => handlePublish(false)}
                   disabled={!selectedEventId}
                 >
                   Unpublish
                 </button>
                 <button
+                  type="button"
                   className="admin-pill-btn admin-pill-red"
                   onClick={handleDelete}
                   disabled={!selectedEventId}
@@ -338,30 +374,44 @@ function AdminPage({ onLogout }) {
                   value={form.category_id}
                   onChange={handleChange}
                 >
-                  <option value="">Select category ID</option>
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
+                  <option value="">Select category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
 
-                <input
+                <select
                   className="admin-input"
                   name="venue_id"
                   value={form.venue_id}
                   onChange={handleChange}
-                  placeholder="Venue ID"
-                />
+                >
+                  <option value="">Select venue</option>
+                  {venues.map((venue) => (
+                    <option key={venue.id} value={venue.id}>
+                      {venue.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="admin-two-col">
-                <input
+                <select
                   className="admin-input"
                   name="organization_id"
                   value={form.organization_id}
                   onChange={handleChange}
-                  placeholder="Organization ID"
-                />
+                >
+                  <option value="">Select organization</option>
+                  {organizations.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
+
                 <input
                   className="admin-input"
                   name="source_url"

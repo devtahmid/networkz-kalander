@@ -2,16 +2,38 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './MainCalendar.css';
 
-function MainCalendar({ onLogout }) {
+function MainCalendar({ onLogout, currentUser }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [events, setEvents] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [currentMonth, setCurrentMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [currentMonth, setCurrentMonth] = useState(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const API_BASE = 'http://127.0.0.1:8000';
+
+  const toLocalDateKey = (dateValue) => {
+    const d = new Date(dateValue);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
+  function normalizeCategory(name) {
+    const value = String(name || '').toLowerCase();
+
+    if (value.includes('music')) return 'music';
+    if (value.includes('art') || value.includes('culture') || value.includes('vernissage')) {
+      return 'arts';
+    }
+    if (value.includes('food') || value.includes('drink')) return 'food';
+    if (value.includes('sport')) return 'sports';
+    if (value.includes('business')) return 'business';
+    return 'community';
+  }
 
   useEffect(() => {
     const fetchPublicEvents = async () => {
@@ -37,18 +59,26 @@ function MainCalendar({ onLogout }) {
               typeof event.organization === 'string'
                 ? event.organization
                 : event.organization?.name || '',
-            date: start ? start.toISOString().split('T')[0] : '',
+            date: start ? toLocalDateKey(start) : '',
             time: start
-              ? start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+              ? start.toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false
+                })
               : '',
             location:
               typeof event.venue === 'string'
                 ? event.venue
                 : event.venue?.name || '',
+            categoryRaw:
+              typeof event.category === 'string'
+                ? event.category
+                : event.category?.name || 'Community',
             category:
               typeof event.category === 'string'
-                ? event.category.toLowerCase()
-                : event.category?.name?.toLowerCase() || 'community',
+                ? normalizeCategory(event.category)
+                : normalizeCategory(event.category?.name || 'Community'),
             description: event.description || '',
             image: '📅'
           };
@@ -92,7 +122,8 @@ function MainCalendar({ onLogout }) {
         event.title.toLowerCase().includes(search) ||
         event.organization.toLowerCase().includes(search) ||
         event.location.toLowerCase().includes(search) ||
-        event.description.toLowerCase().includes(search);
+        event.description.toLowerCase().includes(search) ||
+        event.categoryRaw.toLowerCase().includes(search);
 
       return matchesCategory && matchesSearch;
     });
@@ -118,12 +149,12 @@ function MainCalendar({ onLogout }) {
 
   const getEventsForDate = (date) => {
     if (!date) return [];
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalDateKey(date);
     return filteredEvents.filter((event) => event.date === dateStr);
   };
 
-  const getTodaysEvents = () => {
-    const dateStr = selectedDate.toISOString().split('T')[0];
+  const getSelectedDateEvents = () => {
+    const dateStr = toLocalDateKey(selectedDate);
     return filteredEvents.filter((event) => event.date === dateStr);
   };
 
@@ -150,20 +181,25 @@ function MainCalendar({ onLogout }) {
   });
 
   const days = getDaysInMonth(currentMonth);
-  const todaysEvents = getTodaysEvents();
+  const selectedDateEvents = getSelectedDateEvents();
 
   return (
     <div className="calendar-page-new">
       <nav className="top-nav">
         <div className="nav-content">
-          <h1 className="nav-logo">CityEvents</h1>
+          <h1 className="nav-logo">KalenderNetz</h1>
+
           <div className="nav-links">
             <Link to="/calendar" className="nav-link active">Calendar</Link>
             <Link to="/browse" className="nav-link">Browse</Link>
             <Link to="/venues" className="nav-link">Venues</Link>
             <Link to="/organizations" className="nav-link">Organizations</Link>
-            <Link to="/admin" className="nav-link">Admin</Link>
+            <Link to="/submit-event" className="nav-link">Submit Event</Link>
+            {currentUser?.is_admin && (
+              <Link to="/admin" className="nav-link">Admin</Link>
+            )}
           </div>
+
           <button className="nav-logout" onClick={onLogout}>Logout</button>
         </div>
       </nav>
@@ -171,7 +207,10 @@ function MainCalendar({ onLogout }) {
       <section className="hero-section">
         <div className="hero-content">
           <h1 className="hero-title">Discover Your City</h1>
-          <p className="hero-subtitle">All local events in one place - never miss what matters to you</p>
+          <p className="hero-subtitle">
+            All local events in one place - never miss what matters to you
+          </p>
+
           <div className="hero-search">
             <input
               type="text"
@@ -203,6 +242,7 @@ function MainCalendar({ onLogout }) {
         <div className="calendar-section">
           <div className="calendar-header">
             <h2 className="month-title">{monthYear}</h2>
+
             <div className="calendar-nav-btns">
               <button
                 className="calendar-nav-btn"
@@ -212,6 +252,7 @@ function MainCalendar({ onLogout }) {
               >
                 ←
               </button>
+
               <button
                 className="today-btn"
                 onClick={() => {
@@ -222,6 +263,7 @@ function MainCalendar({ onLogout }) {
               >
                 Today
               </button>
+
               <button
                 className="calendar-nav-btn"
                 onClick={() =>
@@ -276,7 +318,7 @@ function MainCalendar({ onLogout }) {
         </div>
 
         <aside className="events-sidebar">
-          <h3 className="sidebar-title">Today's Events</h3>
+          <h3 className="sidebar-title">Selected Day Events</h3>
           <p className="sidebar-date">{formatDateHeader(selectedDate)}</p>
 
           {loading && (
@@ -293,15 +335,16 @@ function MainCalendar({ onLogout }) {
 
           {!loading && !error && (
             <div className="events-list">
-              {todaysEvents.length > 0 ? (
-                todaysEvents.map((event) => (
+              {selectedDateEvents.length > 0 ? (
+                selectedDateEvents.map((event) => (
                   <div key={event.id} className="event-card-mini">
                     <div className="event-card-header">
                       <h4 className="event-card-title">{event.title}</h4>
                       <span className={`event-category-badge ${event.category}`}>
-                        {categories.find((c) => c.id === event.category)?.name || event.category}
+                        {categories.find((c) => c.id === event.category)?.name || event.categoryRaw}
                       </span>
                     </div>
+
                     <div className="event-card-info">
                       <div className="event-info-item">
                         <span className="info-icon">📍</span>
@@ -309,6 +352,7 @@ function MainCalendar({ onLogout }) {
                         <span>•</span>
                         <span>{event.location || 'No location'}</span>
                       </div>
+
                       {event.organization && (
                         <div className="event-info-item">
                           <span className="info-icon">🏢</span>

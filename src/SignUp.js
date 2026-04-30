@@ -16,20 +16,16 @@ function SignUp({ onBackToLogin }) {
   });
 
   const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const API_BASE = 'http://127.0.0.1:8000';
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-
+    
     if (errors[name]) {
-      setErrors((prev) => ({
+      setErrors(prev => ({
         ...prev,
         [name]: ''
       }));
@@ -40,19 +36,19 @@ function SignUp({ onBackToLogin }) {
     const newErrors = {};
 
     if (!formData.businessName.trim()) {
-      newErrors.businessName = 'Username or business name is required';
+      newErrors.businessName = 'Business name is required';
     }
 
     if (!formData.businessEmail.trim()) {
-      newErrors.businessEmail = 'Email is required';
+      newErrors.businessEmail = 'Business email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.businessEmail)) {
       newErrors.businessEmail = 'Please enter a valid email';
     }
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 3) {
-      newErrors.password = 'Password must be at least 3 characters';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
 
     if (!formData.confirmPassword) {
@@ -62,11 +58,11 @@ function SignUp({ onBackToLogin }) {
     }
 
     if (!formData.businessNumber.trim()) {
-      newErrors.businessNumber = 'Business registration number is required';
+      newErrors.businessNumber = 'Business number is required';
     }
 
     if (!formData.businessAddress.trim()) {
-      newErrors.businessAddress = 'Address is required';
+      newErrors.businessAddress = 'Business address is required';
     }
 
     if (!formData.city.trim()) {
@@ -85,59 +81,33 @@ function SignUp({ onBackToLogin }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-
-    if (!validateForm()) return;
-
-    setIsSubmitting(true);
-
-    try {
-      const res = await fetch(`${API_BASE}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: formData.businessEmail.trim(),
-          username: formData.businessName.trim(),
-          password: formData.password
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || 'Registration failed');
-      }
-
-      alert('Account created successfully. Please sign in.');
+    
+    if (validateForm()) {
+      console.log('Sign up data:', formData);
+      alert('Account created successfully!');
       onBackToLogin();
-    } catch (err) {
-      console.error('Registration error:', err);
-      alert(err.message || 'Registration failed');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="signup-container">
       <div className="signup-card">
-        <h1 className="app-title">KalenderNetz</h1>
-        <h2 className="signup-title">Create Account</h2>
-
+        <h1 className="app-title">Networkz Kalander</h1>
+        <h2 className="signup-title">Create Business Account</h2>
+        
         <form onSubmit={handleSubmit} className="signup-form">
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="businessName">Username / Business Name *</label>
+              <label htmlFor="businessName">Business Name *</label>
               <input
                 type="text"
                 id="businessName"
                 name="businessName"
                 value={formData.businessName}
                 onChange={handleInputChange}
-                placeholder="Enter your username or business name"
+                placeholder="Enter your business name"
                 className={errors.businessName ? 'error' : ''}
               />
               {errors.businessName && <span className="error-text">{errors.businessName}</span>}
@@ -146,14 +116,14 @@ function SignUp({ onBackToLogin }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="businessEmail">Email *</label>
+              <label htmlFor="businessEmail">Business Email *</label>
               <input
                 type="email"
                 id="businessEmail"
                 name="businessEmail"
                 value={formData.businessEmail}
                 onChange={handleInputChange}
-                placeholder="name@example.com"
+                placeholder="business@company.com"
                 className={errors.businessEmail ? 'error' : ''}
               />
               {errors.businessEmail && <span className="error-text">{errors.businessEmail}</span>}
@@ -174,7 +144,7 @@ function SignUp({ onBackToLogin }) {
               />
               {errors.password && <span className="error-text">{errors.password}</span>}
             </div>
-
+            
             <div className="form-group">
               <label htmlFor="confirmPassword">Confirm Password *</label>
               <input
@@ -199,10 +169,10 @@ function SignUp({ onBackToLogin }) {
                 name="vatNumber"
                 value={formData.vatNumber}
                 onChange={handleInputChange}
-                placeholder="DE123456789"
+                placeholder="VAT123456789"
               />
             </div>
-
+            
             <div className="form-group">
               <label htmlFor="businessNumber">Business Registration Number *</label>
               <input
@@ -211,7 +181,7 @@ function SignUp({ onBackToLogin }) {
                 name="businessNumber"
                 value={formData.businessNumber}
                 onChange={handleInputChange}
-                placeholder="HRB 12345"
+                placeholder="Business registration number"
                 className={errors.businessNumber ? 'error' : ''}
               />
               {errors.businessNumber && <span className="error-text">{errors.businessNumber}</span>}
@@ -220,7 +190,7 @@ function SignUp({ onBackToLogin }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="businessAddress">Address *</label>
+              <label htmlFor="businessAddress">Business Address *</label>
               <input
                 type="text"
                 id="businessAddress"
@@ -248,7 +218,7 @@ function SignUp({ onBackToLogin }) {
               />
               {errors.city && <span className="error-text">{errors.city}</span>}
             </div>
-
+            
             <div className="form-group">
               <label htmlFor="postalCode">Postal Code *</label>
               <input
@@ -262,7 +232,7 @@ function SignUp({ onBackToLogin }) {
               />
               {errors.postalCode && <span className="error-text">{errors.postalCode}</span>}
             </div>
-
+            
             <div className="form-group">
               <label htmlFor="country">Country *</label>
               <input
@@ -279,15 +249,14 @@ function SignUp({ onBackToLogin }) {
           </div>
 
           <div className="form-actions">
-            <button type="submit" className="signup-submit-btn" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating Account...' : 'Create Account'}
+            <button type="submit" className="signup-submit-btn">
+              Create Account
             </button>
-
-            <button
-              type="button"
+            
+            <button 
+              type="button" 
               className="back-to-login-btn"
               onClick={onBackToLogin}
-              disabled={isSubmitting}
             >
               Back to Sign In
             </button>
