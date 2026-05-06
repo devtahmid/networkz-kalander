@@ -366,7 +366,7 @@ class EventScraper(BaseCase):
         # Save to CSV
         df = pd.DataFrame(cleaned_events)
         
-        output_path = "/Users/jamesooi/Documents/marburg_events.csv"  # Change this to your desired folder
+        output_path = "/Users/jamesooi/Documents/GitHub/networkz-kalander/Scraped_Files/marburg_events.csv"  # Change this to your desired folder
         df.to_csv(output_path, index=False)
         print(f"\nSaved {len(df)} events to {output_path}")
 
